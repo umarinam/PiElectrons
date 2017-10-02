@@ -19,9 +19,9 @@ if len(arduino_ports) > 1:
 _portName = arduino_ports[0]
 sp = serial.Serial(_portName, _portBaudRate)
 
-LeftSleep = 0.1
-RightSleep = 0.1
-ForwardSleep = 0.1
+LeftSleep = 1
+RightSleep = 1
+ForwardSleep = 1
 
 def setForwardSleep (t1):
     ForwardSleep = t1
@@ -33,16 +33,17 @@ def setLeftSleep (t1):
     LeftSleep = t1
 
 def initRC():
+    Stop()
     time.sleep(1)
     #Reset ports
-    Stop()
+    
 
 def Forward_Right(CycleDuration, TurnTime):
     print ('Forward-Right: ' + str(TurnTime))
-    Reverse(False)
-    Left(False)
-    Forward(True)    
-    Right(True)   
+    #Reverse(False)
+    #Left(False)
+    Right(True)
+    Forward(True)          
     time.sleep(TurnTime/RightSleep)     
     Right(False)    
     time.sleep(CycleDuration - TurnTime)  
@@ -50,10 +51,10 @@ def Forward_Right(CycleDuration, TurnTime):
     
 def Forward_Left(CycleDuration, TurnTime):
     print ('Forward-Left: ' + str(TurnTime))
-    Right(False)
-    Reverse(False)
-    Forward(True)    
-    Left(True)   
+    #Right(False)
+    #Reverse(False)        
+    Left(True)
+    Forward(True)   
     time.sleep(TurnTime/LeftSleep)     
     Left(False)    
     time.sleep(CycleDuration - TurnTime)  

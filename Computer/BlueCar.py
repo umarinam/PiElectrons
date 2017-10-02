@@ -10,6 +10,7 @@ from pygame.locals import *
 import socket
 import os
 from RCControl import *
+import datetime
 
 # Timeout for socket connection
 waitForConn = .25
@@ -18,7 +19,7 @@ waitForConn = .25
 resWidthCenter = 300
 
 # communication settings
-TCP_IP = '192.168.8.101'
+TCP_IP = '192.168.8.102'
 TCP_PORT = 5005
 BUFFER_SIZE = 20  # Normally 1024, but we want fast response
 
@@ -72,24 +73,42 @@ greenUpper = (94, 247, 243)
     
 def Turn(cdCenter, frameCenter):
     TurnPercent = 100 * abs(cdCenter - frameCenter) / frameCenter
-    CycleDuration = 0.5
-    TurnTime = CycleDuration * TurnPercent / 100
-    if (cdCenter < frameCenter):
+    #CycleDuration = 0.1   #0.5
+    #TurnTime = CycleDuration * TurnPercent / 100
+    if (cdCenter  + 50 < frameCenter):
+        CycleDuration = 0.2   #0.5
+        TurnTime = CycleDuration * TurnPercent / 100
         Forward_Right(CycleDuration, TurnTime)
-    elif (cdCenter   > frameCenter):
+    elif (cdCenter - 50   > frameCenter):
+        CycleDuration = 0.1   #0.5
+        TurnTime = CycleDuration * TurnPercent / 100
         Forward_Left(CycleDuration, TurnTime)
     else:
+        CycleDuration = 0.5   #0.5
+        TurnTime = CycleDuration * TurnPercent / 100
         Forward_Forward(CycleDuration)
 
 #Initialize RC Controls
 initRC() 
 
+
+#x=0.5
+#print datetime.datetime.now() 
+#Forward_Forward(x)
+#Forward_Right(x,x)
+#Forward_Forward(x)
+#Forward_Left(x/2,x/2)
+#Stop()
+#print datetime.datetime.now() 
+#x = 2
+
 # Read Streaming Data
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((TCP_IP, TCP_PORT))
-s.settimeout(waitForConn)
+#s.settimeout(waitForConn)
 s.listen(1)
+conn, addr = s.accept()
    
 #server_socket = socket.socket()
 #server_socket.bind(('192.168.8.100', 8000)) #BentleyBackup
@@ -99,48 +118,58 @@ s.listen(1)
 # accept a single connection
 #connection = server_socket.accept()[0].makefile('rb')
 
-
+print "Listening!"
 while True:
-    try:
-        key = cv2.waitKey(1) & 0xFF
-        # if the 'q' key is pressed, stop the loop
-        if key == ord("q"):
-            Stop()
-            break        
-        if key == ord("s"):
-            Stop()              
-        if key == ord("f"):
-            Reverse(False)
-            Forward(True)
-        if key == ord("b"):   #back         
-            Forward(False)
-            Reverse(True)
-        if key == ord("l"):   #left
-            Turn(100, resWidthCenter)
-        if key == ord("r"):  #right 
-            Turn(400, resWidthCenter)
-
-        ld = cv2.getTrackbarPos('ld','Filters')
-        rd = cv2.getTrackbarPos('rd','Filters')
-        fd = cv2.getTrackbarPos('fd','Filters')
-        setLeftSleep(ld/100)
-        setRightSleep(rd/100)
-        setForwardSleep(fd/100)
-        conn, addr = s.accept()
-        #print 'Connection address:', addr
-        data = conn.recv(BUFFER_SIZE)
-        if not data: break
-        if(data):
-            print "RaspberryPi says:", data            
-            Turn(int(data), resWidthCenter)
-
-    except:
-        print "Stoping! As no valid input recieved for " + str(waitForConn) + " seconds."
+    #try:
+    key = cv2.waitKey(1) & 0xFF
+    # if the 'q' key is pressed, stop the loop
+    if key == ord("q") or key == ord("e") or key == 27 : #escape
         Stop()
-        continue
+        break        
+    if key == ord("s") or key == 32: # Stop on s and space
+        Stop()              
+    if key == ord("f"):
+        Reverse(False)
+        Forward(True)
+    if key == ord("b"):   #back         
+        Forward(False)
+        Reverse(True)
+    if key == ord("l"):   #left
+        Turn(100, resWidthCenter)
+    if key == ord("r"):  #right 
+        Turn(400, resWidthCenter)
 
+    ld = cv2.getTrackbarPos('ld','Filters')
+    rd = cv2.getTrackbarPos('rd','Filters')
+    fd = cv2.getTrackbarPos('fd','Filters')
+    #setLeftSleep(ld/10)
+    #setRightSleep(rd/10)
+    #setForwardSleep(fd/10)
+    #conn, addr = s.accept()
+    #print 'Connection address:', addr
 
-    conn.close()
+    data = conn.recv(BUFFER_SIZE)
+    if not data: break
+    if(data):
+        print "RaspberryPi says:", data
+        rdata = data.rsplit(":",1)
+        #print "Spliting:", rdata
+        if(len(rdata) > 1):
+            try:
+                offset = int(rdata[1].replace(":",""))
+                Turn(offset, 300)
+                print "Last Point:", rdata[1]            
+            except:
+                print "Unable to split:", data  
+                continue         
+        #Turn(int(data), resWidthCenter)
+
+    #except:
+    #    #print "Stoping! As no valid input recieved for " + str(waitForConn) + " seconds."
+    #    Stop()
+    #    continue
+
+conn.close()
 
 
 # define the lower and upper boundaries of the "green"
@@ -175,18 +204,9 @@ try:
         if first != -1 and last != -1:
             jpg = stream_bytes[first:last + 2]
             stream_bytes = stream_bytes[last + 2:]
-            #image = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
             frame = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), 1)
             frame = cv2.flip( frame, 0)
-            #b, g, r = cv2.split(image)
-            #for x in range(0, 640):
-            #    for y in range(0, 479):
-            #        image[x][y] = [0,b[x][y],0]
-            #cv2.imshow('image', image)
-            
-            #cv2.imshow('roi_image', roi)
-            #cv2.imshow('image', image)
-            #frame = image
+
 
             hl = cv2.getTrackbarPos('hl','Filters')
             sl = cv2.getTrackbarPos('sl','Filters')
@@ -207,12 +227,9 @@ try:
                 cv2.imwrite(picName, image)
 
             xwidth, xheight, xchannel = frame.shape
-            # blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            #cv2.imshow('image', hsv)
-            #for x in range(0, 640):
-            #    for y in range(0, 480):
-            #        image[
+
             if(False):
                 picName = 'pic.bmp'
                 cv2.imwrite(picName, image)
